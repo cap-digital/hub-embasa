@@ -61,6 +61,8 @@ export const dashboards: Dashboard[] = [
     description: "Performance da campanha Histórias que Conectam",
     url: "https://embasahqc.capdigital.company/",
     status: "Encerrada",
+    period: "18/03 – 05/04/2026",
+    strategies: 10,
   },
 ];
 
