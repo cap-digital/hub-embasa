@@ -49,8 +49,18 @@ function LayersIcon() {
   );
 }
 
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true">
+      <circle cx="10" cy="10" r="7" />
+      <circle cx="10" cy="10" r="3.5" />
+      <circle cx="10" cy="10" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DashboardCard({ dashboard, index }: { dashboard: Dashboard; index: number }) {
-  const { name, tag, description, url, status, period, platforms } = dashboard;
+  const { name, tag, description, url, status, period, platforms, strategies } = dashboard;
   const live = status === "Em andamento";
   const number = String(index + 1).padStart(2, "0");
 
@@ -100,7 +110,7 @@ export function DashboardCard({ dashboard, index }: { dashboard: Dashboard; inde
           {description}
         </p>
 
-        {(period || platforms) && (
+        {(period || platforms || strategies) && (
           <ul className="mt-5 flex flex-wrap gap-2 text-sm font-medium lg:short:mt-4 lg:short:text-[13px]">
             {period && (
               <li className="dash-ink inline-flex items-center gap-1.5 rounded-lg bg-(--chip-bg) px-2.5 py-1 text-(--ink-meta) tabular-nums">
@@ -113,6 +123,12 @@ export function DashboardCard({ dashboard, index }: { dashboard: Dashboard; inde
               <li className="dash-ink inline-flex items-center gap-1.5 rounded-lg bg-(--chip-bg) px-2.5 py-1 text-(--ink-meta) tabular-nums">
                 <LayersIcon />
                 {platforms} {platforms === 1 ? "plataforma" : "plataformas"}
+              </li>
+            )}
+            {strategies && (
+              <li className="dash-ink inline-flex items-center gap-1.5 rounded-lg bg-(--chip-bg) px-2.5 py-1 text-(--ink-meta) tabular-nums">
+                <TargetIcon />
+                {strategies} {strategies === 1 ? "estratégia" : "estratégias"}
               </li>
             )}
           </ul>

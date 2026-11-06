@@ -23,6 +23,8 @@ export type Dashboard = {
   period?: string;
   /** Quantidade de plataformas de mídia, opcional. */
   platforms?: number;
+  /** Quantidade de estratégias de mídia, opcional. */
+  strategies?: number;
 };
 
 export const dashboards: Dashboard[] = [
@@ -41,6 +43,8 @@ export const dashboards: Dashboard[] = [
     description: "Acompanhamento da campanha Nova Conta",
     url: "https://embasa-novaconta.capdigital.company/",
     status: "Em andamento",
+    period: "05/11 – 13/11/2026",
+    strategies: 4,
   },
   {
     slug: "el-nino",
