@@ -1,26 +1,352 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Paleta extraída de public/brand/embasa-logo.svg
+ *   #1860aa  azul Embasa (wordmark)       → primária
+ *   #1487c9  azul médio (gota)
+ *   #2baee5  azul claro (gota)
+ *   #81cff4  azul água (gota)
+ *   #4fbbbd  turquesa (gota)
+ *   #188e4c  verde de apoio (theme-color do painel Nova Conta)
+ */
+@theme {
+  --color-embasa-50: #eef5fc;
+  --color-embasa-100: #d9e8f7;
+  --color-embasa-200: #b5d2ee;
+  --color-embasa-500: #1487c9;
+  --color-embasa-600: #1860aa;
+  --color-embasa-700: #124f8e;
+  --color-embasa-800: #0d3d72;
+  --color-embasa-900: #092c55;
+  --color-embasa-950: #061c38;
+
+  --color-sky-water: #2baee5;
+  --color-aqua: #81cff4;
+  --color-teal-brand: #4fbbbd;
+
+  --color-support: #188e4c;
+  --color-support-700: #126b39;
+  --color-support-50: #e8f5ed;
+
+  --color-surface: #f4f8fc;
+
+  --animate-wave-slow: wave 26s linear infinite;
+  --animate-wave-mid: wave 18s linear infinite;
+  --animate-wave-fast: wave 12s linear infinite;
+
+  @keyframes wave {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Cor de fundo do html = o que o navegador pinta no "bounce" (overscroll) e,
+ * no Chrome/Safari, atrás do trilho transparente da barra de scroll.
+ * Azul do topo do hero por padrão; vira o fundo claro quando a dobra 2 ocupa
+ * a maior parte da tela (data-fold="2", setado por <ScrollSurface />).
+ */
+html {
+  background-color: var(--color-embasa-950);
+  overscroll-behavior-y: none;
+}
+
+html[data-fold="2"] {
+  background-color: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  overscroll-behavior-y: none;
+  background: var(--color-surface);
+  color: var(--color-slate-900);
+}
+
+/* =====================================================================
+ * Barra de scroll da página (só no html; não há outras áreas com scroll).
+ * Chrome/Edge e Safari: ::-webkit-scrollbar (gradiente, pill "flutuando", hover).
+ * Firefox (sem ::-webkit-scrollbar): padrão scrollbar-width/scrollbar-color.
+ * O padrão fica restrito via @supports porque, no Chrome 121+, scrollbar-color
+ * desativaria os pseudo-elementos webkit (e com eles o gradiente e o hover).
+ * ===================================================================== */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #1e8fd6 transparent;
+  }
+}
+
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-image: linear-gradient(180deg, var(--color-embasa-600), var(--color-sky-water));
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, #1f74c9, #45c0f0);
+}
+
+html::-webkit-scrollbar-thumb:active {
+  background-image: linear-gradient(180deg, #2385e0, #5fcbf5);
+}
+
+/* Telas baixas (ex.: notebook 1280×720): compacta a dobra 2 para caber em 100dvh. */
+@custom-variant short (@media (max-height: 820px));
+
+/* =====================================================================
+ * Cards de painel — "água subindo"
+ *
+ * Camadas (de trás pra frente): .dash-border (borda; gira nos ativos)
+ * → .dash-surface (fundo branco) → .dash-water (onda + corpo) → .dash-num
+ * → conteúdo. Estados por variáveis CSS; animações só em transform/opacity.
+ * Estado "cheio": hover (mouse), foco via teclado ou toque ([data-pressed]).
+ * [data-touch] evita que o :hover "grudado" do mobile mantenha o card cheio.
+ * ===================================================================== */
+.dash-card {
+  --ink-title: var(--color-embasa-950);
+  --ink-body: var(--color-slate-600);
+  --ink-meta: var(--color-slate-700);
+  --ink-cta: var(--color-embasa-600);
+  --chip-bg: var(--color-slate-100);
+  --sep: rgb(226 232 240 / 0.9);
+  --num: var(--color-embasa-100);
+  --border-c: var(--color-slate-200);
+  --surface: #fff;
+  --water-y: calc(100% + 8px); /* vazio */
+  --wave-play: paused;
+  --ink-delay: 0s;
+  --rx: 0deg;
+  --ry: 0deg;
+  --lift: 0px;
+
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry))
+    translate3d(0, var(--lift), 0);
+  box-shadow: 0 1px 2px rgb(9 44 85 / 0.06), 0 8px 24px -16px rgb(9 44 85 / 0.2);
+  transition:
+    transform 0.25s ease-out,
+    box-shadow 0.4s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dash-card[data-live] {
+  --border-c: var(--color-embasa-200);
+  --surface: linear-gradient(180deg, #fff 0%, var(--color-embasa-50) 100%);
+  --water-y: calc(100% - 44px); /* nível baixo constante = "ativo" */
+  --wave-play: running;
+  box-shadow: 0 1px 2px rgb(9 44 85 / 0.06), 0 18px 40px -20px rgb(9 44 85 / 0.35);
+}
+
+.dash-card:is(:focus-visible, [data-pressed], :hover:not([data-touch])) {
+  --ink-title: #fff;
+  --ink-body: #fff;
+  --ink-meta: #fff;
+  --ink-cta: #fff;
+  --chip-bg: rgb(6 28 56 / 0.3);
+  --sep: rgb(255 255 255 / 0.3);
+  --num: rgb(255 255 255 / 0.12);
+  --border-c: var(--color-embasa-600);
+  --water-y: 0%; /* cheio */
+  --wave-play: running;
+  --ink-delay: 0.15s;
+  --lift: -6px;
+  --badge-bg: rgb(6 28 56 / 0.3);
+  --badge-ink: #fff;
+  --badge-ring: rgb(255 255 255 / 0.35);
+  --badge-dot: rgb(255 255 255 / 0.75);
+  --tag-bg: #fff;
+  --tag-ink: var(--color-embasa-700);
+  box-shadow: 0 1px 2px rgb(9 44 85 / 0.1), 0 28px 56px -20px rgb(9 44 85 / 0.45);
+}
+
+.dash-card:focus-visible {
+  outline: 3px solid var(--color-embasa-600);
+  outline-offset: 4px;
+}
+
+.dash-arrow {
+  transform: translate3d(var(--arrow-x, 0), 0, 0);
+  transition: transform 0.3s ease;
+}
+
+.dash-card:is(:focus-visible, [data-pressed], :hover:not([data-touch])) .dash-arrow {
+  --arrow-x: 6px;
+}
+
+.dash-ink {
+  transition: color 0.4s ease var(--ink-delay), background-color 0.4s ease var(--ink-delay),
+    border-color 0.4s ease var(--ink-delay), box-shadow 0.4s ease var(--ink-delay);
+}
+
+.dash-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--border-c);
+  transition: background-color 0.3s ease;
+}
+
+/* Brilho girando na borda dos cards ativos (rotate = só compositor). */
+.dash-spin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 300%;
+  aspect-ratio: 1;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 58%,
+    var(--color-teal-brand) 72%,
+    var(--color-sky-water) 82%,
+    var(--color-embasa-600) 92%,
+    transparent 100%
+  );
+  transform: translate(-50%, -50%);
+  animation: dash-spin 7s linear infinite;
+}
+
+.dash-surface {
+  position: absolute;
+  inset: 1.5px;
+  border-radius: calc(1.5rem - 1.5px);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.dash-water {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(100% + 18px);
+  transform: translate3d(0, var(--water-y), 0);
+  transition: transform 0.9s cubic-bezier(0.22, 0.8, 0.24, 1);
+  will-change: transform;
+}
+
+.dash-crest {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200%;
+  height: 18px;
+  animation: dash-wave 5s linear infinite;
+  animation-play-state: var(--wave-play);
+}
+
+.dash-crest--back {
+  top: -7px;
+  height: 25px; /* desce até o corpo: sem fresta entre as duas cristas */
+  fill: var(--color-sky-water);
+  opacity: 0.75;
+  animation-duration: 8s;
+  animation-direction: reverse;
+}
+
+.dash-crest--front {
+  fill: var(--color-embasa-500);
+}
+
+.dash-water-body {
+  position: absolute;
+  inset: 17.5px 0 0;
+  background: linear-gradient(
+    180deg,
+    var(--color-embasa-500) 0,
+    #1271af 24px,
+    var(--color-embasa-600) 55%,
+    var(--color-embasa-800) 100%
+  );
+}
+
+/* Posição/tamanho do número ficam nas classes (variam por breakpoint). */
+.dash-num {
+  position: absolute;
+  color: var(--num);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s ease var(--ink-delay);
+}
+
+/* Entrada em sequência quando a dobra 2 aparece (IntersectionObserver). */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-reveal] > li {
+    transition:
+      opacity 0.7s ease,
+      transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+      filter 0.7s ease;
+    transition-delay: calc(var(--i, 0) * 100ms);
+  }
+  [data-reveal]:not([data-revealed]) > li {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    filter: blur(8px);
+  }
+}
+
+/* Movimento reduzido: sem tilt, sem onda, sem entrada; hover = só troca de cor. */
+@media (prefers-reduced-motion: reduce) {
+  .dash-card {
+    transform: none;
+    transition: box-shadow 0.2s ease;
+  }
+  .dash-water,
+  .dash-arrow {
+    transition: none;
+  }
+  .dash-crest,
+  .dash-spin {
+    animation: none;
+  }
+}
+
+@keyframes dash-wave {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes dash-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+::selection {
+  background: var(--color-aqua);
+  color: var(--color-embasa-950);
 }
